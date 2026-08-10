@@ -96,8 +96,8 @@ def process_videos_on_gpu(
             sync_frames = video_info.sync_frames.unsqueeze(0).to(device)
 
             with torch.no_grad():
-                clip_features = feature_extractor.encode_video_with_clip(clip_frames)
-                sync_features = feature_extractor.encode_video_with_sync(sync_frames)
+                clip_features = feature_extractor.encode_video_with_clip(clip_frames, batch_size=8)
+                sync_features = feature_extractor.encode_video_with_sync(sync_frames, batch_size=1)
 
             clip_features_np = clip_features.squeeze(0).detach().cpu().float().numpy()
             sync_features_np = sync_features.squeeze(0).detach().cpu().float().numpy()

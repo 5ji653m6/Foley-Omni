@@ -194,14 +194,14 @@ def load_video_features(video_path, clip_features_path=None, sync_features_path=
         if clip_features is None:
             logging.info("Extracting CLIP features...")
             with torch.inference_mode():
-                clip_features = feature_utils.encode_video_with_clip(clip_frames)
+                clip_features = feature_utils.encode_video_with_clip(clip_frames, batch_size=8)
             clip_features = clip_features.squeeze(0)  # (T_clip, 1024)
             logging.info(f"CLIP feature shape: {clip_features.shape}")
-        
+
         if sync_features is None:
             logging.info("Extracting Sync features...")
             with torch.inference_mode():
-                sync_features = feature_utils.encode_video_with_sync(sync_frames)
+                sync_features = feature_utils.encode_video_with_sync(sync_frames, batch_size=1)
             sync_features = sync_features.squeeze(0)  # (T_sync, 768)
             logging.info(f"Sync feature shape: {sync_features.shape}")
     
@@ -631,6 +631,12 @@ def main(config, args):
         logging.info(f"[Duration] Final duration used for generation: {duration:.2f}s")
         
         for idx in range(config.get("each_example_n_times", 1)):
+            video_stem = Path(video_path).stem
+            audio_output_path = os.path.join(output_dir, f"{video_stem}.wav")
+            if audio_only and os.path.exists(audio_output_path):
+                logging.info(f"Skipping {video_path}, audio output already exists: {audio_output_path}")
+                continue
+
             logging.info(f"--- [Start] Processing seed {seed+idx} ---")
             logging.info(f"Video: {video_path}")
             logging.info(f"Text prompt: {text_prompt}")

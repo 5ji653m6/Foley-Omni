@@ -11,3 +11,8 @@ outputs/
 tmp/
 
 *.log
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/

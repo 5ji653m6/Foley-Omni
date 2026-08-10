@@ -1,0 +1,28 @@
+ckpt_dir: ./ckpts
+output_dir: /data/SANA-WM-dataset/foley_omni_subset/outputs
+sample_steps: 50
+solver_name: unipc
+model_name: "960x960_10s"
+shift: 5.0
+sp_size: 1
+audio_guidance_scale: 5.0
+mode: "vt2a"
+fp8: False
+cpu_offload: False
+sample_rate: 16000
+seed: 103
+audio_negative_prompt: "robotic, muffled, echo, distorted"
+cfg_zero_video_features_in_negative: true
+cfg_apply_to_clip_features: true
+cfg_apply_to_sync_features: true
+slg_layer: 11
+each_example_n_times: 1
+
+# Batch JSON mode
+json_file: /data/SANA-WM-dataset/foley_omni_subset/manifest.json
+
+audio_only: False
+duration: 10.0
+
+# Released Foley-Omni checkpoint path
+model_checkpoint: ./ckpts/Foley-Omni/v2st.pth

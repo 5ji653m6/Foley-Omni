@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foley-omni"
+version = "0.1.0"
+description = "Foley-Omni: unified multimodal audio generation for video-to-soundtrack"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["foley_omni*"]
