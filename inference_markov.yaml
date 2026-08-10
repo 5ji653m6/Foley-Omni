@@ -1,0 +1,27 @@
+ckpt_dir: ./ckpts
+output_dir: /data/datasets/markov-ai-work/outputs
+sample_steps: 50
+solver_name: unipc
+model_name: "960x960_10s"
+shift: 5.0
+sp_size: 1  # overridden at runtime by torchrun; use --nproc_per_node=N for N-way parallelism
+audio_guidance_scale: 5.0
+mode: "vt2a"
+fp8: False
+cpu_offload: False
+sample_rate: 16000
+seed: 103
+audio_negative_prompt: "robotic, muffled, echo, distorted"
+cfg_zero_video_features_in_negative: true
+cfg_apply_to_clip_features: true
+cfg_apply_to_sync_features: true
+slg_layer: 11
+each_example_n_times: 1
+
+# Batch JSON mode: global inference manifest built by merge_markov_manifest.py
+json_file: /data/datasets/markov-ai-work/inference_manifest.json
+
+audio_only: True
+duration: 10.0
+
+model_checkpoint: ./ckpts/Foley-Omni/v2st.pth
