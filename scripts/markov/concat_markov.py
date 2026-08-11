@@ -62,6 +62,13 @@ def concat_audio(args) -> dict | None:
     finally:
         concat_list.unlink(missing_ok=True)
 
+    # Free the per-segment wavs — they've been merged into clip_audio.wav.
+    for w in seg_wavs:
+        try:
+            w.unlink()
+        except OSError:
+            pass
+
     duration = None
     try:
         r = subprocess.run(

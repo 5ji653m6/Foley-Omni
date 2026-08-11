@@ -92,6 +92,14 @@ def worker(gpu_id: int, video_paths: list[str], progress_queue: mp.Queue):
             np.save(clip_out, clip_np)
             np.save(sync_out, sync_np)
 
+            # Free the segment mp4 immediately — only the .npy features
+            # are needed downstream. This keeps disk usage low throughout
+            # extraction instead of spiking at the end.
+            try:
+                video_path.unlink()
+            except OSError as exc:
+                log.warning("Could not delete segment %s: %s", video_path, exc)
+
             results.append({
                 "audio_path": str(video_path),
                 "clip_feature_path": str(clip_out.absolute()),
@@ -236,6 +244,21 @@ def main() -> None:
     n_entries = write_feature_manifest()
     log.info("Total segments processed: %d", total_processed)
     log.info("Wrote %s: %d entries", FEATURE_MANIFEST, n_entries)
+
+    # Cleanup: delete segment mp4 files. They're only needed for feature
+    # extraction; inference reads from the .npy features, and concat reads
+    # from the generated .wav outputs. Removing these ~1.6 TB of mp4s keeps
+    # us well within disk budget for the inference step.
+    deleted = 0
+    failed = 0
+    for seg_path in SEGMENTS_DIR.glob("*.mp4"):
+        try:
+            seg_path.unlink()
+            deleted += 1
+        except OSError as exc:
+            log.warning("Could not delete %s: %s", seg_path, exc)
+            failed += 1
+    log.info("Cleaned up %d segment mp4s (%d failures)", deleted, failed)
 
 
 if __name__ == "__main__":
