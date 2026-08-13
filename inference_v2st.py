@@ -231,11 +231,20 @@ def generate_audio_for_video(
     dtype=torch.bfloat16
 ):
     """Generate soundtrack audio for a single input video."""
-    if abs(duration - 10.0) < 0.01:
+    # The released Foley-Omni checkpoint is trained for exactly 10 s of audio.
+    # When pre-extracted features are supplied, they come from 10 s windows
+    # (one segment per clip) and the model MUST be asked to generate 10 s;
+    # otherwise it reads the source video's true duration (often many minutes)
+    # and produces an audio-latent sequence far longer than the RoPE context
+    # window (~5000 tokens) can handle, causing a CUDA error.
+    have_preextracted = bool(clip_features_path and sync_features_path)
+    if not have_preextracted and abs(duration - 10.0) < 0.01:
         accurate_duration, _ = get_video_duration_accurate(video_path)
         if accurate_duration is not None and accurate_duration > 0 and abs(accurate_duration - 10.0) > 0.1:
             duration = accurate_duration
             logging.info(f"[generate_audio_for_video] Duration looked like a default value; re-read video duration as {duration:.2f}s")
+    elif have_preextracted:
+        logging.info(f"[generate_audio_for_video] Pre-extracted features present; locking duration to {duration:.2f}s (ignoring video's actual duration)")
     
     logging.info(f"[generate_audio_for_video] Starting audio generation with duration={duration:.2f}s")
     
@@ -631,7 +640,15 @@ def main(config, args):
         original_duration_from_config = duration
         logging.info(f"[Duration] Config duration: {duration:.2f}s")
 
-        if os.path.isfile(video_path):
+        # When pre-extracted features are provided, they come from a 10 s
+        # segment window and the model MUST generate exactly 10 s of audio.
+        # Reading the full video's real duration (often many minutes) would
+        # produce an audio-latent sequence far longer than the RoPE context
+        # window (~5000 tokens) can handle.
+        if video_clip_features_path and video_sync_features_path:
+            duration = original_duration_from_config if original_duration_from_config and original_duration_from_config > 0 else 10.0
+            logging.info(f"[Duration] Pre-extracted features present; locking duration to {duration:.2f}s")
+        elif os.path.isfile(video_path):
             accurate_duration, video_fps = get_video_duration_accurate(video_path)
             if accurate_duration is not None and accurate_duration > 0:
                 duration = accurate_duration
