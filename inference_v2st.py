@@ -524,7 +524,8 @@ def main(config, args):
                 'video_path': video_path,
                 'text_prompt': text_prompt,
                 'clip_features_path': clip_features_path,
-                'sync_features_path': sync_features_path
+                'sync_features_path': sync_features_path,
+                'uuid': video_info.get("uuid"),
             })
         
         logging.info(f"Loaded {len(all_eval_data)} videos from JSON")
@@ -666,7 +667,23 @@ def main(config, args):
         
         for idx in range(config.get("each_example_n_times", 1)):
             video_stem = Path(video_path).stem
-            audio_output_path = os.path.join(output_dir, f"{video_stem}.wav")
+            # Preserve provenance: when multiple videos share the same
+            # filename (e.g. every Markov clip is named clip.mp4 inside
+            # its <uuid>/ directory), use the manifest's uuid field so
+            # each output wav unambiguously identifies its source video.
+            manifest_uuid = eval_item.get("uuid") if isinstance(eval_item, dict) else None
+            if manifest_uuid:
+                audio_stem = manifest_uuid
+            else:
+                # Fall back to the parent directory name when the stem is a
+                # generic name like "clip" or "video". This keeps outputs
+                # distinguishable when videos share a filename.
+                generic_stems = {"clip", "video", "input", "source", "sample"}
+                if video_stem.lower() in generic_stems:
+                    audio_stem = Path(video_path).parent.name
+                else:
+                    audio_stem = video_stem
+            audio_output_path = os.path.join(output_dir, f"{audio_stem}.wav")
             if audio_only and os.path.exists(audio_output_path):
                 logging.info(f"Skipping {video_path}, audio output already exists: {audio_output_path}")
                 continue
@@ -711,10 +728,8 @@ def main(config, args):
             
             logging.info("Phase 1 finished. Phase 2: Saving outputs...")
             if sp_rank == 0:
-                video_stem = Path(video_path).stem
-
-                output_path = os.path.join(output_dir, f"{video_stem}_{seed+idx}_{global_rank}.mp4")
-                audio_output_path = os.path.join(output_dir, f"{video_stem}.wav") if audio_only else output_path.replace('.mp4', '.wav')
+                output_path = os.path.join(output_dir, f"{audio_stem}_{seed+idx}_{global_rank}.mp4")
+                audio_output_path = os.path.join(output_dir, f"{audio_stem}.wav") if audio_only else output_path.replace('.mp4', '.wav')
                 if audio_only:
                     logging.info(f"Saving audio only to: {audio_output_path}")
                     try:
