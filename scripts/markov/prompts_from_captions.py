@@ -25,17 +25,36 @@ FEATURES_DIR = Path("/data/datasets/markov-ai-work/features")
 OUTPUT_MANIFEST = Path("/data/datasets/markov-ai-work/inference_manifest_clips.json")
 
 
-def find_features_for_uuid(uuid: str):
-    """Return (clip_npy, sync_npy) paths for the first matching feature pair."""
-    clip = None
-    sync = None
-    for p in FEATURES_DIR.glob(f"{uuid}_seg*_clip_features.npy"):
-        clip = p
-        break
-    for p in FEATURES_DIR.glob(f"{uuid}_seg*_sync_features.npy"):
-        sync = p
-        break
-    return clip, sync
+def build_feature_index():
+    """Scan FEATURES_DIR once and build {uuid: (clip_npy, sync_npy)} mapping.
+
+    The previous implementation called glob twice per UUID across the full
+    350k-file features dir, which took many minutes. A single scandir pass
+    groups files by uuid in ~1 second.
+    """
+    index = {}  # uuid -> {"clip": Path, "sync": Path}
+    for p in FEATURES_DIR.iterdir():
+        name = p.name
+        if name.endswith("_clip_features.npy"):
+            # <uuid>_seg<NNNN>_clip_features.npy
+            stem = name[: -len("_clip_features.npy")]
+            uuid = stem.rsplit("_seg", 1)[0]
+            index.setdefault(uuid, {})["clip"] = p
+        elif name.endswith("_sync_features.npy"):
+            stem = name[: -len("_sync_features.npy")]
+            uuid = stem.rsplit("_seg", 1)[0]
+            index.setdefault(uuid, {})["sync"] = p
+    return {
+        uuid: (paths.get("clip"), paths.get("sync"))
+        for uuid, paths in index.items()
+    }
+
+
+def find_features_for_uuid(uuid: str, index: dict):
+    entry = index.get(uuid, (None, None))
+    if isinstance(entry, tuple):
+        return entry
+    return (entry.get("clip"), entry.get("sync"))
 
 
 def sanitize_prompt(prompt: str) -> str:
@@ -51,6 +70,10 @@ def sanitize_prompt(prompt: str) -> str:
 
 def main() -> None:
     OUTPUT_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+
+    print("Building feature index (single scan of features dir)...")
+    feature_index = build_feature_index()
+    print(f"  indexed {len(feature_index)} UUIDs with features")
 
     clips_with_captions = sorted(CLIPS_DIR.glob("*.json"))
     print(f"Found {len(clips_with_captions)} captioned clips in {CLIPS_DIR}")
@@ -85,7 +108,7 @@ def main() -> None:
 
         audio_prompt = sanitize_prompt(audio_prompt)
 
-        clip_feat, sync_feat = find_features_for_uuid(uuid)
+        clip_feat, sync_feat = find_features_for_uuid(uuid, feature_index)
         if not (clip_feat and sync_feat):
             missing_features += 1
             continue
