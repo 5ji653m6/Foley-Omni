@@ -18,8 +18,9 @@ cfg_apply_to_sync_features: true
 slg_layer: 11
 each_example_n_times: 1
 
-# Batch JSON mode: global inference manifest built by merge_markov_manifest.py
-json_file: /data/datasets/markov-ai-work/inference_manifest.json
+# Batch JSON mode: one entry per clip (built by prompts_from_captions.py).
+# Each clip produces one 10 s audio output, regardless of the clip's actual duration.
+json_file: /data/datasets/markov-ai-work/inference_manifest_clips.json
 
 audio_only: True
 duration: 10.0

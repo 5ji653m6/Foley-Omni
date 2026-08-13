@@ -485,21 +485,32 @@ def main(config, args):
         
         all_eval_data = []
         for video_path, video_info in json_data.items():
-            if not os.path.isfile(video_path):
-                logging.warning(f"Video file not found; skipping: {video_path}")
-                continue
-            
             text_prompt = video_info.get("resp", "")
             clip_features_path = video_info.get("clip_feature_path", None)
             sync_features_path = video_info.get("sync_feature_path", None)
-            
+
             if clip_features_path and not os.path.isfile(clip_features_path):
                 logging.warning(f"CLIP feature file not found: {clip_features_path}; features will be extracted from video")
                 clip_features_path = None
             if sync_features_path and not os.path.isfile(sync_features_path):
                 logging.warning(f"Sync feature file not found: {sync_features_path}; features will be extracted from video")
                 sync_features_path = None
-            
+
+            have_preextracted = (
+                clip_features_path and os.path.isfile(clip_features_path)
+                and sync_features_path and os.path.isfile(sync_features_path)
+            )
+
+            if not os.path.isfile(video_path):
+                if have_preextracted:
+                    # Pre-extracted features are sufficient; the video file is
+                    # only needed for duration detection, which falls back to
+                    # the configured duration when the file is missing.
+                    logging.info(f"Video file not found but pre-extracted features available; using config duration: {video_path}")
+                else:
+                    logging.warning(f"Video file not found and no pre-extracted features; skipping: {video_path}")
+                    continue
+
             all_eval_data.append({
                 'video_path': video_path,
                 'text_prompt': text_prompt,
@@ -619,14 +630,20 @@ def main(config, args):
         
         original_duration_from_config = duration
         logging.info(f"[Duration] Config duration: {duration:.2f}s")
-        
-        accurate_duration, video_fps = get_video_duration_accurate(video_path)
-        if accurate_duration is not None and accurate_duration > 0:
-            duration = accurate_duration
-            logging.info(f"[Duration] Read actual video duration: {duration:.2f}s (replacing config value {original_duration_from_config:.2f}s)")
+
+        if os.path.isfile(video_path):
+            accurate_duration, video_fps = get_video_duration_accurate(video_path)
+            if accurate_duration is not None and accurate_duration > 0:
+                duration = accurate_duration
+                logging.info(f"[Duration] Read actual video duration: {duration:.2f}s (replacing config value {original_duration_from_config:.2f}s)")
+            else:
+                duration = original_duration_from_config if original_duration_from_config and original_duration_from_config > 0 else 10.0
+                logging.warning(f"[Duration] Could not read accurate video duration; using config/default value {duration:.2f}s")
         else:
+            # Video file missing (e.g. cleaned up after feature extraction).
+            # Fall back to the config duration without trying to decode.
             duration = original_duration_from_config if original_duration_from_config and original_duration_from_config > 0 else 10.0
-            logging.warning(f"[Duration] Could not read accurate video duration; using config/default value {duration:.2f}s")
+            logging.warning(f"[Duration] Video file not found; using config/default value {duration:.2f}s")
         
         logging.info(f"[Duration] Final duration used for generation: {duration:.2f}s")
         
