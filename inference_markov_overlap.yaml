@@ -1,5 +1,5 @@
 ckpt_dir: ./ckpts
-output_dir: /data/datasets/markov-ai-work/outputs
+output_dir: /data/datasets/markov-ai-work/outputs_overlap
 sample_steps: 50
 solver_name: unipc
 model_name: "960x960_10s"
