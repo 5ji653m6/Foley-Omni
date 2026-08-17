@@ -22,9 +22,9 @@ import numpy as np
 import soundfile as sf
 
 DATA_ROOT = Path("/data/datasets/markov-ai")
-OUTPUTS_DIR = Path("/data/datasets/markov-ai-work/outputs_overlap")
-MANIFEST = Path("/data/datasets/markov-ai-work/inference_manifest_overlap.json")
-SUMMARY_PATH = Path("/data/datasets/markov-ai-work/overlap_summary.json")
+OUTPUTS_DIR = Path(os.environ.get("OVERLAP_OUTPUTS_DIR", "/data/datasets/markov-ai-work/outputs_overlap"))
+MANIFEST = Path(os.environ.get("OVERLAP_MANIFEST", "/data/datasets/markov-ai-work/inference_manifest_overlap.json"))
+SUMMARY_PATH = Path(os.environ.get("OVERLAP_SUMMARY", "/data/datasets/markov-ai-work/overlap_summary.json"))
 SAMPLE_RATE = 16000
 
 
